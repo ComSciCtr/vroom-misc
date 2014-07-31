@@ -1,0 +1,28 @@
+#!/usr/bin/env vroom-wrapper
+#
+# This simple program is used to demonstrate the watch feature in vroom.
+# In the live-coding environment the program is reloaded whenever there
+# is a change to the application's source code. It is possible to specify
+# an additional file to watch, the same reload action will be triggered
+# whenever there is a change to the specified file.
+#
+# To run the program,
+#
+#   ./watch-test.vroom --live --watch=params.txt
+#
+# Then edit the values in the params.txt. You should see size and/or 
+# color of the sphere changed after saving the file.
+#
+# The first line in params.txt specifies the size of the sphere.
+# The second line specifies the r, g, b color values.
+
+from vroom import *
+
+def init():
+    params = open('params.txt')
+    Global.size = int(params.readline())
+    Global.color = map(float, params.readline().split())
+
+def display():
+    color(Global.color)
+    sphere(Global.size)
