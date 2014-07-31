@@ -1,0 +1,101 @@
+#!/usr/bin/env vroom-wrapper
+# 
+# This program renders a PLY file containing multiple patches.
+# 
+# Before you run the program, copy (or link) the PLY file into the data/
+# directory. Then enter the filename below in the init() function.
+#
+# Filenames are always specified relative to the data/ directory. For example
+# if the file you wanted to visualize was located at ./data/my-mesh-file.ply
+# then you would set the value below to
+#
+#   plyfile = 'my-mesh-file.ply'
+#
+
+from vroom import *
+
+import vroom.extra.PLY as ply
+
+def mesh_generator(faces):
+   mesh = { }
+   while len(faces) != 0:
+      patch, indices = faces.pop(), faces.pop()
+      mesh.setdefault(patch, []).extend(indices)
+   return mesh 
+
+@LiveCoding.no_update
+def init():
+   # Parse the model data
+   plyfile = '' # !! ENTER MESH FILENAME HERE !!
+   parser = ply.Parser(get_resource(plyfile))
+
+   # Get patch data from parser
+   mesh = mesh_generator(parser.faces)
+
+   # Create the Mesh object and add patch indices
+   Global.buffer = ply.create_mesh(parser)
+   for (patch, indices) in mesh.items():
+      Global.buffer.addIndexData(indices, 'triangles')
+
+   # Generate random colors for patches
+   Global.colors = [random_color() for i in range(len(mesh))]
+
+   # Initialize variables to toggle render state
+   Global.lighting = BooleanOption()
+
+   # Initially set state to True. 
+   #
+   # NOTE: This will result in the toggle button state and the
+   #       value stored in Global.patches being out of sync.
+   Global.patches = [BooleanOption(True) for i in range(len(mesh))]
+
+   # Add toggle buttons to main menu
+   addMainMenuItem('Lighting', lambda x: Global.lighting.toggle() , type='toggle')
+
+   for i in range(len(mesh)):
+      addMainMenuItem('Patch {}'.format(i), toggle_patch, type='toggle')
+
+def toggle_patch(toggle):
+   # Get the index value from the toggle button label
+   index = int(toggle.getName().split()[1])
+
+   # Toggle the patch boolean value
+   Global.patches[index].toggle()
+
+def draw_patches():
+   # Render each patch in a different color/material
+   #
+   # NOTE: IndexedBuffer.patches() seems to be returning a list with
+   #       with one additional item.
+   for i, patch in enumerate(Global.buffer.patches()[:-1]):
+      if not Global.patches[i]: 
+         continue
+
+      # Set color/material property for the patch
+      if Global.lighting:
+         material(Global.colors[i])
+      else:
+         color(Global.colors[i])
+
+      # Render the patch
+      patch.draw()
+
+def draw():
+   # Initialize rendering state
+   lighting(Global.lighting)
+    
+   if Global.lighting:
+      glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+      material(green)
+      style = 'solid'
+   else:
+      glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+      color(green)
+      style = 'wireframe'
+
+   #Global.buffer.draw(style=style)
+   Global.buffer.batch_render(draw_patches)
+
+   # Restore rendering state
+   glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+
